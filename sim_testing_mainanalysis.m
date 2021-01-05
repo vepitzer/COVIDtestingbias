@@ -185,6 +185,29 @@ bias_lowerci(:,scenario)=Rt_obs_ci(:,1,scenario)-Rt_true_adj(:,scenario);
 
 end
 
+%% Use EpiEstim to estimate Rt
+config = make_config('mean_si',6.5,'std_si',4); %'wind_len',3,
+for i=1:11
+    Rt_epiestim_true(i)=estimate_R(NewCase(:,i),'parametric_si',config);
+    Rt_epiestim_obs(i)=estimate_R(Npositive(1:70,i),'parametric_si',config);
+    %Rt_epiestim_obs_full(i)=estimate_R(Npositive(:,i),'parametric_si',config);
+end
+
+clear Rt_true_epiestim Rt_true_epiestim_ci Rt_obs_epiestim Rt_obs_epiestim_ci %Rt_obs_full_epiestim Rt_obs_full_epiestim_ci
+for i=1:11
+    Rt_true_epiestim(:,i)=Rt_epiestim_true(i).median_posterior';
+    Rt_true_epiestim_ci(:,:,i)=[Rt_epiestim_true(i).quantile_0025_posterior' Rt_epiestim_true(i).quantile_0975_posterior'];
+    Rt_obs_epiestim(:,i)=Rt_epiestim_obs(i).median_posterior';
+    Rt_obs_epiestim_ci(:,:,i)=[Rt_epiestim_obs(i).quantile_0025_posterior' Rt_epiestim_obs(i).quantile_0975_posterior'];
+    %Rt_obs_full_epiestim(:,i)=Rt_epiestim_obs_full(i).median_posterior';
+    %Rt_obs_full_epiestim_ci(:,:,i)=[Rt_epiestim_obs_full(i).quantile_0025_posterior' Rt_epiestim_obs_full(i).quantile_0975_posterior'];
+end  
+
+% Estimate the bias in estimates of Rt (as indicated by upper CI<0 or lower CI>0)
+for scenario=1:11
+    bias_epiestim_upperci(:,scenario)=Rt_obs_epiestim_ci(:,2,scenario)-Rt_true_epiestim(:,scenario);
+    bias_epiestim_lowerci(:,scenario)=Rt_obs_epiestim_ci(:,1,scenario)-Rt_true_epiestim(:,scenario);
+end
 
 %% PLOT RESULTS %%%
 
@@ -237,14 +260,20 @@ end
 
 subplot(5,4,4*(scenario-1)+3)
 hold on
-plot(find(Rt_true_adj(:,scenario)),Rt_true_adj(Rt_true_adj(:,scenario)>0,scenario),'k')
-plot(find(Rt_obs_adj(:,scenario)),Rt_obs_adj(Rt_obs_adj(:,scenario)>0,scenario),'Color',[0 .7 0])
-fill([find(Rt_obs_adj(:,scenario)); flipud(find(Rt_obs_adj(:,scenario))); find(Rt_obs_adj(:,scenario),1)],[Rt_obs_ci(find(Rt_obs_adj(:,scenario)),1,scenario); Rt_obs_ci(flipud(find(Rt_obs_adj(:,scenario))),2,scenario); Rt_obs_ci(find(Rt_obs_adj(:,scenario),1),1,scenario)],[.9 1 .9],'EdgeColor',[.9 1 .9])
-fill([find(Rt_true_adj(:,scenario)); flipud(find(Rt_true_adj(:,scenario))); find(Rt_true_adj(:,scenario),1)],[Rt_true_ci(find(Rt_true_adj(:,scenario)),1,scenario); Rt_true_ci(flipud(find(Rt_true_adj(:,scenario))),2,scenario); Rt_true_ci(find(Rt_true_adj(:,scenario),1),1,scenario)],[.9 .9 .9],'EdgeColor',[.9 .9 .9])
-plot(find(Rt_true_adj(:,scenario)),Rt_true_adj(Rt_true_adj(:,scenario)>0,scenario),'k')
-plot(find(Rt_obs_adj(:,scenario)),Rt_obs_adj(Rt_obs_adj(:,scenario)>0,scenario),'Color',[0 .7 0],'LineWidth',1)
-plot(Rt_true(:,scenario),':k')
-plot(Rt_obs(:,scenario),':','Color',[0 .7 0])
+%plot(find(Rt_true_adj(:,scenario)),Rt_true_adj(Rt_true_adj(:,scenario)>0,scenario),'k')
+%plot(find(Rt_obs_adj(:,scenario)),Rt_obs_adj(Rt_obs_adj(:,scenario)>0,scenario),'Color',[0 .7 0])
+%fill([find(Rt_obs_adj(:,scenario)); flipud(find(Rt_obs_adj(:,scenario))); find(Rt_obs_adj(:,scenario),1)],[Rt_obs_ci(find(Rt_obs_adj(:,scenario)),1,scenario); Rt_obs_ci(flipud(find(Rt_obs_adj(:,scenario))),2,scenario); Rt_obs_ci(find(Rt_obs_adj(:,scenario),1),1,scenario)],[.9 1 .9],'EdgeColor',[.9 1 .9])
+%fill([find(Rt_true_adj(:,scenario)); flipud(find(Rt_true_adj(:,scenario))); find(Rt_true_adj(:,scenario),1)],[Rt_true_ci(find(Rt_true_adj(:,scenario)),1,scenario); Rt_true_ci(flipud(find(Rt_true_adj(:,scenario))),2,scenario); Rt_true_ci(find(Rt_true_adj(:,scenario),1),1,scenario)],[.9 .9 .9],'EdgeColor',[.9 .9 .9])
+%plot(find(Rt_true_adj(:,scenario)),Rt_true_adj(Rt_true_adj(:,scenario)>0,scenario),'k')
+%plot(find(Rt_obs_adj(:,scenario)),Rt_obs_adj(Rt_obs_adj(:,scenario)>0,scenario),'Color',[0 .7 0],'LineWidth',1)
+%plot(Rt_true(:,scenario),':k')
+%plot(Rt_obs(:,scenario),':','Color',[0 .7 0])
+plot(Rt_epiestim_true(1).t_end',Rt_true_epiestim(:,scenario),'k')
+plot(Rt_epiestim_obs(1).t_end',Rt_obs_epiestim(:,scenario),'Color',[0 .7 0],'LineWidth',1)
+fill([Rt_epiestim_obs(1).t_end'; flipud(Rt_epiestim_obs(1).t_end'); Rt_epiestim_obs(1).t_end(1)],[Rt_obs_epiestim_ci(:,1,scenario); flipud(Rt_obs_epiestim_ci(:,2,scenario)); Rt_obs_epiestim_ci(1,1,scenario)],[.9 1 .9],'EdgeColor',[.9 1 .9])
+fill([Rt_epiestim_true(1).t_end'; flipud(Rt_epiestim_true(1).t_end'); Rt_epiestim_true(1).t_end(1)],[Rt_true_epiestim_ci(:,1,scenario); flipud(Rt_true_epiestim_ci(:,2,scenario)); Rt_true_epiestim_ci(1,1,scenario)],[.9 .9 .9],'EdgeColor',[.9 .9 .9])
+plot(Rt_epiestim_true(1).t_end',Rt_true_epiestim(:,scenario),'k')
+plot(Rt_epiestim_obs(1).t_end',Rt_obs_epiestim(:,scenario),'Color',[0 .7 0],'LineWidth',1)
 plot((0:round(tmax*dt))',ones(round(tmax*dt)+1,1),'--k')
 plot([20 20],[0 6],'k','LineWidth',.75)
 ylabel('R_t')
@@ -306,14 +335,20 @@ end
 
 subplot(6,4,4*(scenario-6)+3)
 hold on
-plot(find(Rt_true_adj(:,scenario)),Rt_true_adj(Rt_true_adj(:,scenario)>0,scenario),'k')
-plot(find(Rt_obs_adj(:,scenario)),Rt_obs_adj(Rt_obs_adj(:,scenario)>0,scenario),'Color',[0 .7 0])
-fill([find(Rt_obs_adj(:,scenario)); flipud(find(Rt_obs_adj(:,scenario))); find(Rt_obs_adj(:,scenario),1)],[Rt_obs_ci(find(Rt_obs_adj(:,scenario)),1,scenario); Rt_obs_ci(flipud(find(Rt_obs_adj(:,scenario))),2,scenario); Rt_obs_ci(find(Rt_obs_adj(:,scenario),1),1,scenario)],[.9 1 .9],'EdgeColor',[.9 1 .9])
-fill([find(Rt_true_adj(:,scenario)); flipud(find(Rt_true_adj(:,scenario))); find(Rt_true_adj(:,scenario),1)],[Rt_true_ci(find(Rt_true_adj(:,scenario)),1,scenario); Rt_true_ci(flipud(find(Rt_true_adj(:,scenario))),2,scenario); Rt_true_ci(find(Rt_true_adj(:,scenario),1),1,scenario)],[.9 .9 .9],'EdgeColor',[.9 .9 .9])
-plot(find(Rt_true_adj(:,scenario)),Rt_true_adj(Rt_true_adj(:,scenario)>0,scenario),'k')
-plot(find(Rt_obs_adj(:,scenario)),Rt_obs_adj(Rt_obs_adj(:,scenario)>0,scenario),'Color',[0 .7 0])
-plot(Rt_true(:,scenario),':k')
-plot(Rt_obs(:,scenario),':','Color',[0 .7 0])
+%plot(find(Rt_true_adj(:,scenario)),Rt_true_adj(Rt_true_adj(:,scenario)>0,scenario),'k')
+%plot(find(Rt_obs_adj(:,scenario)),Rt_obs_adj(Rt_obs_adj(:,scenario)>0,scenario),'Color',[0 .7 0])
+%fill([find(Rt_obs_adj(:,scenario)); flipud(find(Rt_obs_adj(:,scenario))); find(Rt_obs_adj(:,scenario),1)],[Rt_obs_ci(find(Rt_obs_adj(:,scenario)),1,scenario); Rt_obs_ci(flipud(find(Rt_obs_adj(:,scenario))),2,scenario); Rt_obs_ci(find(Rt_obs_adj(:,scenario),1),1,scenario)],[.9 1 .9],'EdgeColor',[.9 1 .9])
+%fill([find(Rt_true_adj(:,scenario)); flipud(find(Rt_true_adj(:,scenario))); find(Rt_true_adj(:,scenario),1)],[Rt_true_ci(find(Rt_true_adj(:,scenario)),1,scenario); Rt_true_ci(flipud(find(Rt_true_adj(:,scenario))),2,scenario); Rt_true_ci(find(Rt_true_adj(:,scenario),1),1,scenario)],[.9 .9 .9],'EdgeColor',[.9 .9 .9])
+%plot(find(Rt_true_adj(:,scenario)),Rt_true_adj(Rt_true_adj(:,scenario)>0,scenario),'k')
+%plot(find(Rt_obs_adj(:,scenario)),Rt_obs_adj(Rt_obs_adj(:,scenario)>0,scenario),'Color',[0 .7 0])
+%plot(Rt_true(:,scenario),':k')
+%plot(Rt_obs(:,scenario),':','Color',[0 .7 0])
+plot(Rt_epiestim_true(1).t_end',Rt_true_epiestim(:,scenario),'k')
+plot(Rt_epiestim_obs(1).t_end',Rt_obs_epiestim(:,scenario),'Color',[0 .7 0],'LineWidth',1)
+fill([Rt_epiestim_obs(1).t_end'; flipud(Rt_epiestim_obs(1).t_end'); Rt_epiestim_obs(1).t_end(1)],[Rt_obs_epiestim_ci(:,1,scenario); flipud(Rt_obs_epiestim_ci(:,2,scenario)); Rt_obs_epiestim_ci(1,1,scenario)],[.9 1 .9],'EdgeColor',[.9 1 .9])
+fill([Rt_epiestim_true(1).t_end'; flipud(Rt_epiestim_true(1).t_end'); Rt_epiestim_true(1).t_end(1)],[Rt_true_epiestim_ci(:,1,scenario); flipud(Rt_true_epiestim_ci(:,2,scenario)); Rt_true_epiestim_ci(1,1,scenario)],[.9 .9 .9],'EdgeColor',[.9 .9 .9])
+plot(Rt_epiestim_true(1).t_end',Rt_true_epiestim(:,scenario),'k')
+plot(Rt_epiestim_obs(1).t_end',Rt_obs_epiestim(:,scenario),'Color',[0 .7 0],'LineWidth',1)
 plot((0:round(tmax*dt))',ones(round(tmax*dt)+1,1),'--k')
 plot([20 20],[0 8],'k','LineWidth',.75)
 ylabel('R_t')
@@ -364,8 +399,10 @@ set(ax(1),'YColor','k','YLim',[0 7],'YTick',0:3:6)
 set(ax(2),'YColor','k','XLim',[20 60],'YLim',[0 80],'YTick',0:40:80)
 plot(find(Rt_obs_adj(:,scenario)),Rt_obs_adj(Rt_obs_adj(:,scenario)>0,scenario),'b')
 plot(find(Rt_tests_adj(:,scenario)),Rt_tests_adj(Rt_tests_adj(:,scenario)>0,scenario),'r')
+plot(Rt_epiestim_true(1).t_end',Rt_true_epiestim(:,scenario),'--k')
+plot(Rt_epiestim_obs(1).t_end',Rt_obs_epiestim(:,scenario),'--b')
 if scenario==11
-legend('True','Observed','Tested','% positive')
+legend('True (WT)','Observed (WT)','Tested (WT)','True (EpiEstim)','Obs (EpiEstim)','% positive')
 end
 plot((0:round(tmax*dt))',ones(round(tmax*dt)+1,1),'--k')
 ylabel('R_t')
