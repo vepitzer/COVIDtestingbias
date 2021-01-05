@@ -164,8 +164,22 @@ R0ci_tests_inc(scenario,:)=prctile(R0samp_tests,[2.5 97.5]);
 [~,Rt_tests_inc(:,scenario),Rt_tests_inc_ci(:,:,scenario)]=wallinga_teunis(Ntested_inc(1:round(tmax*dt),scenario),[4.79 1.357],100);
 
 Rt_bias(:,scenario)=max(0,Rt_obs_inc_ci(:,1,scenario)-Rt_true_inc(:,scenario));
-end
+%end
+%% Estimate Rt using EpiEstim (method of Cori et al)
+config = make_config('mean_si',6.5,'std_si',4); %'wind_len',3,
+%for scenario=1:15
+Rt_epiestim_true_inc(scenario)=estimate_R(NewCase_inc(:,scenario),'parametric_si',config);
+Rt_epiestim_obs_inc(scenario)=estimate_R(Npositive_inc(:,scenario),'parametric_si',config);
 
+Rt_true_inc_epiestim(:,scenario)=Rt_epiestim_true_inc(scenario).median_posterior';
+Rt_true_inc_epiestim_ci(:,:,scenario)=[Rt_epiestim_true_inc(scenario).quantile_0025_posterior' Rt_epiestim_true_inc(scenario).quantile_0975_posterior'];
+Rt_obs_inc_epiestim(:,scenario)=Rt_epiestim_obs_inc(scenario).median_posterior';
+Rt_obs_inc_epiestim_ci(:,:,scenario)=[Rt_epiestim_obs_inc(scenario).quantile_0025_posterior' Rt_epiestim_obs_inc(scenario).quantile_0975_posterior'];
+
+% Estimate the bias in estimates of Rt (as indicated by upper CI<0 or lower CI>0)
+Rt_bias_inc_epiestim(:,scenario)=max(0,Rt_obs_inc_epiestim_ci(:,1,scenario)-Rt_true_inc_epiestim(:,scenario));
+
+end
 
 %% PLOT RESULTS %%%
 
@@ -197,8 +211,9 @@ end
 
 subplot(3,4,4*(scenario-1)+3)
 hold on
-plot(Rt_true_inc(:,(scenario-1)*5+1:scenario*5),'k')
-plot(Rt_obs_inc(:,(scenario-1)*5+1:scenario*5))
+%plot(Rt_true_inc(:,(scenario-1)*5+1:scenario*5),'Color',[.7 .7 .7])
+plot(Rt_epiestim_true_inc(1).t_end',Rt_true_inc_epiestim(:,(scenario-1)*5+1:scenario*5),'k')
+plot(Rt_epiestim_obs_inc(1).t_end',Rt_obs_inc_epiestim(:,(scenario-1)*5+1:scenario*5))
 plot((0:round(tmax*dt))',ones(round(tmax*dt)+1,1),'--k')
 plot([20 20],[0 6],'k','LineWidth',.75)
 ylabel('R_t')
@@ -207,7 +222,7 @@ ylim([0 6])
 
 subplot(3,4,4*scenario)
 hold on
-plot(Rt_bias(:,(scenario-1)*5+1:scenario*5))
+plot(Rt_epiestim_true_inc(1).t_end',Rt_bias_inc_epiestim(:,(scenario-1)*5+1:scenario*5))
 xlim([20 70])
 ylim([-1 4])
 if scenario==1
@@ -220,9 +235,9 @@ end
 end
 
 %%
-gtext('A','FontWeight','bold')
-gtext('B','FontWeight','bold')
-%gtext('C','FontWeight','bold')
+gtext('A)','FontWeight','bold')
+gtext('B)','FontWeight','bold')
+gtext('C)','FontWeight','bold')
 
 %% Plot R0 estimates
 figure
