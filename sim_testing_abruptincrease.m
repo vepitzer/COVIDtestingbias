@@ -164,8 +164,40 @@ R0ci_tests_delta(scenario,:)=prctile(R0samp_tests,[2.5 97.5]);
 [~,Rt_tests_delta(:,scenario),Rt_tests_delta_ci(:,:,scenario)]=wallinga_teunis(Ntested_delta(1:round(tmax*dt),scenario),[4.79 1.357],100);
 
 Rt_bias_delta(:,scenario)=max(0,Rt_obs_delta_ci(:,1,scenario)-Rt_true_delta(:,scenario));
+
+%% Estimate Rt using EpiEstim (method of Cori et al)
+config = make_config('mean_si',6.5,'std_si',4); %'wind_len',3,
+%for scenario=1:15
+Rt_epiestim_true_delta(scenario)=estimate_R(NewCase_delta(:,scenario),'parametric_si',config);
+Rt_epiestim_obs_delta(scenario)=estimate_R(Npositive_delta(:,scenario),'parametric_si',config);
+
+Rt_true_delta_epiestim(:,scenario)=Rt_epiestim_true_delta(scenario).median_posterior';
+Rt_true_delta_epiestim_ci(:,:,scenario)=[Rt_epiestim_true_delta(scenario).quantile_0025_posterior' Rt_epiestim_true_delta(scenario).quantile_0975_posterior'];
+Rt_obs_delta_epiestim(:,scenario)=Rt_epiestim_obs_delta(scenario).median_posterior';
+Rt_obs_delta_epiestim_ci(:,:,scenario)=[Rt_epiestim_obs_delta(scenario).quantile_0025_posterior' Rt_epiestim_obs_delta(scenario).quantile_0975_posterior'];
+
+% Estimate the bias in estimates of Rt (as indicated by upper CI<0 or lower CI>0)
+Rt_bias_delta_epiestim(:,scenario)=max(0,Rt_obs_delta_epiestim_ci(:,1,scenario)-Rt_true_delta_epiestim(:,scenario));
+%end
+
 end
 
+%% Use EpiEstim to estimate Rt
+config = make_config('mean_si',6.5,'std_si',4); %'wind_len',3,
+for scenario=1:15
+    Rt_epiestim_true_delta(scenario)=estimate_R(NewCase_delta(:,scenario),'parametric_si',config);
+    Rt_epiestim_obs_delta(scenario)=estimate_R(Npositive_delta(:,scenario),'parametric_si',config);
+
+    Rt_true_delta_epiestim(:,scenario)=Rt_epiestim_true_delta(scenario).median_posterior';
+    Rt_true_delta_epiestim_ci(:,:,scenario)=[Rt_epiestim_true_delta(scenario).quantile_0025_posterior' Rt_epiestim_true_delta(scenario).quantile_0975_posterior'];
+    Rt_obs_delta_epiestim(:,scenario)=Rt_epiestim_obs_delta(scenario).median_posterior';
+    Rt_obs_delta_epiestim_ci(:,:,scenario)=[Rt_epiestim_obs_delta(scenario).quantile_0025_posterior' Rt_epiestim_obs_delta(scenario).quantile_0975_posterior'];
+end  
+
+% Estimate the bias in estimates of Rt (as indicated by upper CI<0 or lower CI>0)
+for scenario=1:15
+    Rt_bias_delta_epiestim(:,scenario)=max(0,Rt_obs_delta_epiestim_ci(:,1,scenario)-Rt_true_delta_epiestim(:,scenario));
+end
 
 %% PLOT RESULTS %%%
 
@@ -180,6 +212,7 @@ plot(Ntested_delta(:,(scenario-1)*5+i),'--','Color',col(i,:),'LineWidth',1)
 plot(Npositive_delta(:,(scenario-1)*5+i),'Color',col(i,:),'LineWidth',1)
 end
 ylabel('# of cases')
+legend('Tests','Cases')
 %ylim([0 1e6])
 xlim([20 70])
 
@@ -194,8 +227,8 @@ end
 
 subplot(3,4,4*(scenario-1)+3)
 hold on
-plot(Rt_true_delta(:,(scenario-1)*5+1:scenario*5),'k')
-plot(Rt_obs_delta(:,(scenario-1)*5+1:scenario*5))
+plot(Rt_epiestim_true_delta(1).t_end',Rt_true_delta_epiestim(:,(scenario-1)*5+1:scenario*5),'k')
+plot(Rt_epiestim_obs_delta(1).t_end',Rt_obs_delta_epiestim(:,(scenario-1)*5+1:scenario*5))
 plot((0:round(tmax*dt))',ones(round(tmax*dt)+1,1),'--k')
 plot([20 20],[0 6],'k','LineWidth',.75)
 ylabel('R_t')
@@ -204,7 +237,7 @@ ylim([0 15])
 
 subplot(3,4,4*scenario)
 hold on
-plot(Rt_bias_delta(:,(scenario-1)*5+1:scenario*5))
+plot(Rt_bias_delta_epiestim(:,(scenario-1)*5+1:scenario*5))
 xlim([20 70])
 ylim([-1 8])
 if scenario==1
@@ -216,15 +249,10 @@ elseif scenario==3
 end
 end
 
-
-
 %%
-%gtext('A','FontWeight','bold')
-%gtext('B','FontWeight','bold')
-%gtext('C','FontWeight','bold')
-%gtext('D','FontWeight','bold')
-%gtext('E','FontWeight','bold')
-%gtext('F','FontWeight','bold')
+gtext('A)','FontWeight','bold')
+gtext('B)','FontWeight','bold')
+gtext('C)','FontWeight','bold')
 
 
 %%
